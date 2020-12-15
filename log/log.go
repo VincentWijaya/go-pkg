@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	"github.com/rifflock/lfshook"
@@ -24,6 +25,7 @@ type LogConfig struct {
 	StdoutFile string
 	StderrFile string
 	Level      string
+	Stdout     bool
 }
 
 type Logger struct {
@@ -54,33 +56,38 @@ func InitLogger(env string, conf LogConfig, ctxData []string) {
 		}
 	}
 
-	pathMap := lfshook.PathMap{}
-	if conf.StdoutFile != "" {
-		pathMap[logrus.DebugLevel] = conf.StdoutFile
-	}
-	if conf.StderrFile != "" {
-		pathMap[logrus.InfoLevel] = conf.StdoutFile
-		pathMap[logrus.ErrorLevel] = conf.StdoutFile
-	}
+	if conf.Stdout == true {
+		logger.Out = os.Stdout
+	} else {
+		pathMap := lfshook.PathMap{}
+		if conf.StdoutFile != "" {
+			pathMap[logrus.DebugLevel] = conf.StdoutFile
+		}
+		if conf.StderrFile != "" {
+			pathMap[logrus.InfoLevel] = conf.StdoutFile
+			pathMap[logrus.ErrorLevel] = conf.StdoutFile
+		}
 
-	rotateFileHook, _ := NewRotateFileHook(RotateFileConfig{
-		Filename:   conf.StdoutFile,
-		MaxSize:    50,
-		MaxBackups: 7,
-		MaxAge:     7,
-		Level:      logrus.DebugLevel,
-		Formatter:  formatter,
-	})
-	logger.AddHook(rotateFileHook)
+		rotateFileHook, _ := NewRotateFileHook(RotateFileConfig{
+			Filename:   conf.StdoutFile,
+			MaxSize:    50,
+			MaxBackups: 7,
+			MaxAge:     7,
+			Level:      logrus.DebugLevel,
+			Formatter:  formatter,
+		})
+		logger.AddHook(rotateFileHook)
+
+		if len(pathMap) > 0 {
+			logger.Hooks.Add(lfshook.NewHook(
+				pathMap,
+				formatter,
+			))
+		}
+	}
 
 	logger.SetFormatter(formatter)
 	logger.SetLevel(getLevel(conf.Level))
-	if len(pathMap) > 0 {
-		logger.Hooks.Add(lfshook.NewHook(
-			pathMap,
-			formatter,
-		))
-	}
 	contextData = ctxData
 }
 
