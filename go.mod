@@ -1,4 +1,4 @@
-module github.com/vincentwijaya/go-pkg
+module github.com/vincentwijaya/go-pkg/v1
 
 go 1.13
 
